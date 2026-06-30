@@ -20,7 +20,7 @@ const DEFAULTS = {
   postalAddress: '',
 };
 
-const LS_KEY = 'palakdiam_rjo_campaign_v4';
+const LS_KEY = 'palakdiam_rjo_campaign_v5';
 const QUOTA_KEY = 'palakdiam_quota';
 const DAILY_CAP = 400;            // max emails per calendar day
 const API_URL = 'https://api.emailjs.com/api/v1.0/email/send';
@@ -271,9 +271,94 @@ function buildEmailHtml(r) {
     'Special RJO member pricing and terms available at the show',
   ].map((t) => `<tr><td valign="top" style="width:16px;color:#9ca3af;font-size:15px;line-height:25px;padding:1px 8px 1px 0;">&bull;</td><td style="font-size:15px;line-height:25px;color:#333a44;padding:1px 0;">${t}</td></tr>`).join('');
 
-  const bookingSentence = booking
-    ? `You can stop by during the show, or <a href="${escAttr(booking)}" style="color:#1f4e79;text-decoration:underline;">book a time in advance here</a>.`
-    : `You can stop by during the show, or simply reply to this email and we will set a time.`;
+  const bookingPara = booking
+    ? 'If you are attending RJO, we would appreciate the opportunity to meet with you at Booth&nbsp;315. You can stop by during the show, or book a time in advance here:'
+    : 'If you are attending RJO, we would appreciate the opportunity to meet with you at Booth&nbsp;315. You can stop by during the show, or simply reply to this email and we will set a time.';
+
+  const bookingButton = booking ? `
+    <table role="presentation" cellpadding="0" cellspacing="0" align="center" style="margin:18px auto 22px;">
+      <tr><td align="center" bgcolor="#1f4e79" style="border-radius:6px;background-color:#1f4e79;">
+        <a href="${escAttr(booking)}" target="_blank" style="display:inline-block;padding:14px 36px;font-family:Helvetica,Arial,sans-serif;font-size:15px;font-weight:bold;color:#ffffff;text-decoration:none;border-radius:6px;letter-spacing:.02em;">Book an Appointment</a>
+      </td></tr>
+    </table>` : '';
+
+  // FLYER 1 · SELLING — recreated natively (renders in every client, no hosting)
+  const sellingFlyer = `
+    <table role="presentation" width="100%" cellpadding="0" cellspacing="0" style="margin:18px 0;background:#0a0a0a;border-radius:14px;">
+      <tr><td style="padding:24px 26px 22px;">
+        <div style="font-family:Georgia,serif;font-size:17px;letter-spacing:.04em;color:#ffffff;font-weight:bold;text-align:center;">PALAK&nbsp;DIAM INC.</div>
+        <div style="font-family:Georgia,serif;font-style:italic;font-size:10px;color:#c9a24b;text-align:center;margin-top:2px;letter-spacing:.04em;">the passion for perfection</div>
+        <table role="presentation" align="center" cellpadding="0" cellspacing="0" style="margin:12px auto;"><tr><td width="120" height="1" style="width:120px;border-bottom:1px solid #3a2f12;font-size:0;line-height:0;mso-line-height-rule:exactly;">&nbsp;</td></tr></table>
+        <div style="font-family:Arial,Helvetica,sans-serif;font-size:29px;line-height:1.05;font-weight:800;color:#ffffff;">NOW SELLING</div>
+        <div style="font-family:Arial,Helvetica,sans-serif;font-size:29px;line-height:1.08;font-weight:800;color:#d8b154;">LOOSE NATURAL DIAMONDS</div>
+        <div style="font-family:Arial,Helvetica,sans-serif;font-size:14px;font-weight:700;color:#ffffff;letter-spacing:.2em;margin-top:8px;">TO RJO MEMBERS</div>
+        <table role="presentation" cellpadding="0" cellspacing="0" style="margin:16px 0;"><tr><td width="54" height="2" style="width:54px;border-bottom:2px solid #d8b154;font-size:0;line-height:0;mso-line-height-rule:exactly;">&nbsp;</td></tr></table>
+        <div style="font-family:Arial,Helvetica,sans-serif;font-size:21px;line-height:1.2;font-weight:800;color:#ffffff;">VALUE PRICING. <span style="color:#e0352b;">REAL SAVINGS</span> PASSED TO YOU.</div>
+        <table role="presentation" cellpadding="0" cellspacing="0" width="100%" style="margin-top:16px;">
+          ${[
+            'DIAMOND PAIRS FOR STUDS',
+            'GIA-CERTIFIED STONES AVAILABLE',
+            'NON-CERTIFIED STONES AVAILABLE',
+            'SELECT GIA-CERTIFIED STONES UP TO <span style="color:#e0352b;font-weight:800;">70 BACK OF RAP</span>',
+          ].map((t) => `<tr><td valign="top" style="width:16px;color:#d8b154;font-size:12px;line-height:20px;padding:4px 9px 4px 0;">◆</td><td style="font-family:Arial,Helvetica,sans-serif;font-size:13px;font-weight:600;letter-spacing:.03em;color:#eaeaea;line-height:20px;padding:4px 0;">${t}</td></tr>`).join('')}
+        </table>
+        <table role="presentation" width="100%" cellpadding="0" cellspacing="0" style="margin-top:18px;border:1px solid #d8b154;border-radius:10px;">
+          <tr><td style="padding:14px 18px;">
+            <div style="font-family:Arial,Helvetica,sans-serif;font-size:11px;letter-spacing:.12em;color:#ffffff;font-weight:700;">VISIT PALAK DIAM AT</div>
+            <div style="font-family:Arial,Helvetica,sans-serif;font-size:30px;font-weight:800;color:#d8b154;line-height:1.15;">BOOTH 315</div>
+            <div style="font-family:Arial,Helvetica,sans-serif;font-size:14px;font-weight:700;color:#ffffff;letter-spacing:.05em;">RJO BUYING SHOW</div>
+            <div style="font-family:Arial,Helvetica,sans-serif;font-size:12px;color:#c9a24b;margin-top:4px;">Lexington, KY &nbsp;·&nbsp; July 31 – August 3</div>
+          </td></tr>
+        </table>
+        <table role="presentation" width="100%" cellpadding="0" cellspacing="0" style="margin:18px 0 8px;"><tr><td height="1" style="border-bottom:1px solid #3a2f12;font-size:0;line-height:0;mso-line-height-rule:exactly;">&nbsp;</td></tr></table>
+        <div style="font-family:Arial,Helvetica,sans-serif;font-size:11px;color:#d8b154;text-align:center;letter-spacing:.02em;">213.228.0077&nbsp;&nbsp;·&nbsp;&nbsp;Sales@PalakDiam.com&nbsp;&nbsp;·&nbsp;&nbsp;www.PalakDiam.com</div>
+      </td></tr>
+    </table>`;
+
+  // FLYER 2 · BUYING — recreated natively
+  const buyingFlyer = `
+    <table role="presentation" width="100%" cellpadding="0" cellspacing="0" style="margin:18px 0;background:#0a0a0a;border-radius:14px;">
+      <tr><td style="padding:20px 0 0;text-align:center;">
+        <div style="font-family:Georgia,serif;font-size:18px;letter-spacing:.1em;color:#ffffff;font-weight:bold;">PALAK&nbsp;DIAM</div>
+        <div style="font-family:Georgia,serif;font-style:italic;font-size:10px;color:#bdbdbd;margin-top:2px;">the passion for perfection</div>
+      </td></tr>
+      <tr><td style="padding:14px 0 0;">
+        <table role="presentation" width="100%" cellpadding="0" cellspacing="0" style="background:#29abe2;">
+          <tr><td style="padding:14px 20px;text-align:center;">
+            <div style="font-family:Georgia,serif;font-size:30px;font-weight:800;color:#ffffff;">WE BUY DIAMONDS!</div>
+            <div style="font-family:Georgia,serif;font-style:italic;font-size:15px;color:#ffffff;margin-top:2px;">Same-Day Payment</div>
+          </td></tr>
+        </table>
+      </td></tr>
+      <tr><td style="padding:14px 16px 0;">
+        <table role="presentation" width="100%" cellpadding="0" cellspacing="0"><tr>
+          ${['ANY SIZE', 'ANY SHAPE', 'ANY QUALITY', 'ANY QUANTITY'].map((t) => `<td style="padding:0 3px;"><div style="background:#ffd400;color:#0a0a0a;font-family:Arial,Helvetica,sans-serif;font-size:10px;font-weight:800;text-align:center;padding:6px 0;border-radius:3px;letter-spacing:.02em;">${t}</div></td>`).join('')}
+        </tr></table>
+      </td></tr>
+      <tr><td style="padding:18px 20px 0;text-align:center;">
+        <div style="font-family:Georgia,serif;font-style:italic;font-size:16px;color:#ffffff;">Breakout diamonds from VVS to I3</div>
+        <div style="font-family:Georgia,serif;font-style:italic;font-weight:800;font-size:18px;color:#ffd400;margin-top:3px;">WE BUY IT ALL!</div>
+      </td></tr>
+      <tr><td style="padding:16px 20px 0;">
+        <table role="presentation" width="100%" cellpadding="0" cellspacing="0"><tr>
+          <td width="50%" valign="top" style="padding:0 14px 0 0;">
+            <div style="font-family:Arial,Helvetica,sans-serif;font-size:13px;font-weight:800;color:#29abe2;text-align:center;letter-spacing:.02em;">SECURED PAYMENT METHODS</div>
+            <div style="font-family:Arial,Helvetica,sans-serif;font-size:13px;color:#ffffff;text-align:center;line-height:1.9;margin-top:8px;">E-Check&nbsp;·&nbsp;Zelle&nbsp;·&nbsp;ACH<br>Wire&nbsp;·&nbsp;Business Check</div>
+          </td>
+          <td width="50%" valign="top" style="padding:0 0 0 14px;border-left:1px solid #242424;">
+            <div style="font-family:Arial,Helvetica,sans-serif;font-size:13px;font-weight:800;color:#29abe2;text-align:center;">24 HOUR TURNAROUND</div>
+            <div style="font-family:Georgia,serif;font-style:italic;font-weight:800;font-size:12px;color:#ffd400;text-align:center;margin-top:6px;">FREE INSURED SHIPPING</div>
+            <div style="font-family:Georgia,serif;font-size:13px;color:#ffffff;text-align:center;line-height:1.4;margin-top:5px;">Every deal backed by a clear, written offer.</div>
+          </td>
+        </tr></table>
+      </td></tr>
+      <tr><td style="padding:18px 20px 22px;">
+        <div style="background:#ffffff;border-radius:12px;padding:14px 18px;text-align:center;">
+          <div style="font-family:Georgia,serif;font-style:italic;font-size:17px;font-weight:800;color:#1a6fa0;">I WANT TO EARN YOUR BUSINESS!</div>
+          <div style="font-family:Arial,Helvetica,sans-serif;font-size:11px;color:#222222;margin-top:6px;">Direct/Text: 213-268-8485&nbsp;&nbsp;·&nbsp;&nbsp;Sales@palakdiam.com&nbsp;&nbsp;·&nbsp;&nbsp;www.palakdiam.com</div>
+        </div>
+      </td></tr>
+    </table>`;
 
   return `<!DOCTYPE html>
 <html lang="en"><head><meta charset="utf-8">
@@ -298,8 +383,11 @@ function buildEmailHtml(r) {
     <p style="margin:0 0 6px;font-size:15px;line-height:1.75;color:#333a44;">We will be bringing:</p>
     <table role="presentation" cellpadding="0" cellspacing="0" width="100%" style="margin:0 0 16px;">${bring}</table>
     <p style="margin:0 0 16px;font-size:15px;line-height:1.75;color:#333a44;">At the same time, Palak Diam remains an active buyer of diamonds, including closeouts, breakout goods, unwanted inventory, small stones, chipped and broken diamonds, single stones, and finished jewelry with diamonds.</p>
-    <p style="margin:0 0 16px;font-size:15px;line-height:1.75;color:#333a44;">If you are attending RJO, we would appreciate the opportunity to meet with you at Booth&nbsp;315. ${bookingSentence}</p>
-    <p style="margin:0 0 22px;font-size:15px;line-height:1.75;color:#333a44;">Whether you are looking to buy, sell, or discuss both, we would be happy to see you in Lexington.</p>
+    <p style="margin:0 0 4px;font-size:15px;line-height:1.75;color:#333a44;">${bookingPara}</p>
+    ${bookingButton}
+    ${sellingFlyer}
+    ${buyingFlyer}
+    <p style="margin:20px 0 22px;font-size:15px;line-height:1.75;color:#333a44;">Whether you are looking to buy, sell, or discuss both, we would be happy to see you in Lexington.</p>
   </td></tr>
 
   <tr><td style="padding:0 48px 30px;font-family:Helvetica,Arial,sans-serif;">
