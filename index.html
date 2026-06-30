@@ -1,0 +1,243 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Palak Diam · RJO Campaign — workflow</title>
+  <link rel="preconnect" href="https://fonts.googleapis.com" />
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+  <link href="https://fonts.googleapis.com/css2?family=Cormorant+Garamond:wght@500;600;700&family=Inter:wght@400;500;600;700&family=JetBrains+Mono:wght@400;500;700&display=swap" rel="stylesheet" />
+  <link rel="stylesheet" href="style.css" />
+</head>
+<body>
+
+  <!-- ===== editor toolbar ===== -->
+  <header class="toolbar">
+    <div class="tb-left">
+      <span class="tb-dots"><i></i><i></i><i></i></span>
+      <span class="tb-file"><b>palak-diam</b>/rjo-campaign<span class="tb-ext">.flow</span></span>
+    </div>
+    <div class="tb-center">
+      <span class="tb-chip" id="nodeCount">5 nodes</span>
+      <span class="tb-chip">2 edges</span>
+      <span class="tb-chip live"><span class="led" id="toolbarLed"></span> <span id="toolbarConn">emailjs: idle</span></span>
+    </div>
+    <div class="tb-right">
+      <span class="tb-zoom">100%</span>
+      <span class="tb-mono">smtp · rest/v1</span>
+    </div>
+  </header>
+
+  <!-- ===== node canvas ===== -->
+  <div class="canvas" id="canvas">
+    <svg class="cables" id="cables" xmlns="http://www.w3.org/2000/svg"></svg>
+
+    <!-- title plate -->
+    <div class="plate">
+      <h1>RJO Booth&nbsp;315 · Campaign Engine</h1>
+      <p>A wired pipeline — credentials feed the template, the template renders against your member list, every row fires through EmailJS.</p>
+    </div>
+
+    <!-- NODE 1 — CREDENTIALS -->
+    <section class="node" id="node-connect">
+      <div class="node-head">
+        <span class="node-ico">⬡</span>
+        <div class="node-title">
+          <div class="node-kind">credentials · emailjs</div>
+          <h2>Connection</h2>
+        </div>
+        <span class="status-pill" id="connStatus">idle</span>
+      </div>
+      <div class="node-body">
+        <label class="field highlight">
+          <span>Service ID <em>· required</em></span>
+          <input id="serviceId" type="text" placeholder="service_xxxxxxx" autocomplete="off" spellcheck="false" />
+          <small>EmailJS → Email Services → your connected service.</small>
+        </label>
+        <details class="more">
+          <summary>Keys · prefilled</summary>
+          <div class="grid-2">
+            <label class="field">
+              <span>Template ID</span>
+              <input id="templateId" type="text" placeholder="template_xxxxxxx" autocomplete="off" spellcheck="false" />
+            </label>
+            <label class="field">
+              <span>Public Key</span>
+              <input id="publicKey" type="text" autocomplete="off" spellcheck="false" />
+            </label>
+            <label class="field">
+              <span>Private Key <em>· optional</em></span>
+              <div class="reveal">
+                <input id="privateKey" type="password" autocomplete="off" spellcheck="false" />
+                <button type="button" class="ghost-btn small" data-reveal="privateKey">show</button>
+              </div>
+            </label>
+          </div>
+        </details>
+        <details class="help">
+          <summary>⚠ Email not sending? (422 fix)</summary>
+          <div class="help-body">
+            <p>"Recipients address is empty" means your template has no <b>To Email</b>. In <code id="tplEcho">template_k8y7cnf</code> → <b>Settings</b> → <b>To Email</b>, set <code>{{email}}</code> and save. Also set <b>Content</b> → <code>{{{message}}}</code>.</p>
+          </div>
+        </details>
+      </div>
+      <span class="port port-out" data-port="out"></span>
+    </section>
+
+    <!-- NODE 2 — TEMPLATE -->
+    <section class="node" id="node-template">
+      <span class="port port-in" data-port="in"></span>
+      <div class="node-head">
+        <span class="node-ico">✉</span>
+        <div class="node-title">
+          <div class="node-kind">template · message</div>
+          <h2>Email Content</h2>
+        </div>
+      </div>
+      <div class="node-body">
+        <p class="muted">Use <code>{{owner}}</code> to drop in the name. Live-renders to the preview node.</p>
+        <label class="field">
+          <span>Subject line</span>
+          <input id="subject" type="text" />
+        </label>
+        <label class="field">
+          <span>Book Appointment link <em>· optional</em></span>
+          <input id="bookingLink" type="url" placeholder="https://calendly.com/..." />
+        </label>
+        <details class="more">
+          <summary>Optional · preview text, sender, footer</summary>
+          <label class="field">
+            <span>Preview text</span>
+            <input id="preview" type="text" />
+          </label>
+          <label class="field">
+            <span>Logo image URL <em>· optional — blank uses the clean text logo</em></span>
+            <input id="logoUrl" type="url" placeholder="https://www.palakdiam.com/logo.png" />
+          </label>
+          <div class="grid-2">
+            <label class="field">
+              <span>Reply-to email</span>
+              <input id="replyTo" type="email" />
+            </label>
+            <label class="field">
+              <span>From name</span>
+              <input id="fromName" type="text" />
+            </label>
+          </div>
+          <label class="field">
+            <span>Postal address <em>· footer (CAN-SPAM)</em></span>
+            <input id="postalAddress" type="text" placeholder="Palak Diam Inc., 550 S Hill St, Los Angeles, CA 90013" />
+          </label>
+        </details>
+      </div>
+      <span class="port port-out" data-port="out"></span>
+    </section>
+
+    <!-- NODE 3 — DATA SOURCE -->
+    <section class="node" id="node-data">
+      <span class="port port-in" data-port="in"></span>
+      <div class="node-head">
+        <span class="node-ico">▤</span>
+        <div class="node-title">
+          <div class="node-kind">data source · csv</div>
+          <h2>Recipients</h2>
+        </div>
+        <div class="counts" id="counts"></div>
+      </div>
+      <div class="node-body">
+        <p class="muted">Columns: <b>Company_Name</b>, <b>Owner_Name</b>, <b>Email</b>. Headers in any order.</p>
+        <div class="dropzone" id="dropzone">
+          <input type="file" id="fileInput" accept=".csv,text/csv" hidden />
+          <div class="dz-inner">
+            <div class="dz-icon">⬡</div>
+            <p><b>Drop CSV here</b> or <button type="button" class="link-btn" id="browseBtn">browse</button></p>
+            <p class="muted">or <button type="button" class="link-btn" id="pasteToggle">paste rows</button> · <button type="button" class="link-btn" id="sampleBtn">load sample</button></p>
+          </div>
+        </div>
+        <textarea id="pasteArea" class="paste-area hidden" placeholder="Company_Name,Owner_Name,Email&#10;Koovai Jewelers,John Patel,buyer@koovai.com&#10;Karat Fine Jewelry,Maria Lopez,info@karat.com"></textarea>
+        <div class="paste-actions hidden" id="pasteActions">
+          <button class="ghost-btn" id="parsePasteBtn">Parse rows</button>
+        </div>
+        <div class="table-wrap hidden" id="tableWrap">
+          <table id="recipientsTable">
+            <thead>
+              <tr><th>#</th><th>Company</th><th>Owner</th><th>Email</th><th>Status</th><th></th></tr>
+            </thead>
+            <tbody id="recipientsBody"></tbody>
+          </table>
+        </div>
+      </div>
+      <span class="port port-out" data-port="out"></span>
+    </section>
+
+    <!-- NODE 4 — RENDER -->
+    <section class="node" id="node-render">
+      <span class="port port-in" data-port="in"></span>
+      <div class="node-head">
+        <span class="node-ico">◫</span>
+        <div class="node-title">
+          <div class="node-kind">render · html</div>
+          <h2>Preview</h2>
+        </div>
+        <select id="previewPicker" class="picker"></select>
+      </div>
+      <div class="node-body">
+        <div class="preview-frame">
+          <iframe id="previewFrame" title="Email preview"></iframe>
+        </div>
+      </div>
+      <span class="port port-out" data-port="out"></span>
+    </section>
+
+    <!-- NODE 5 — OUTPUT -->
+    <section class="node node--out" id="node-send">
+      <span class="port port-in" data-port="in"></span>
+      <div class="node-head">
+        <span class="node-ico">➤</span>
+        <div class="node-title">
+          <div class="node-kind">output · smtp</div>
+          <h2>Execute</h2>
+        </div>
+      </div>
+      <div class="node-body">
+        <p class="muted">Test on yourself first. Sends fire sequentially with a delay (EmailJS allows ~1/sec).</p>
+        <div class="quota">
+          <span class="quota-count" id="quotaCount">0 / 400 sent today</span>
+          <span class="quota-timer" id="quotaTimer"></span>
+        </div>
+        <div class="send-row">
+          <label class="field inline">
+            <span>Delay (sec)</span>
+            <input id="delay" type="number" min="1" step="0.5" value="1.5" />
+          </label>
+          <label class="field inline">
+            <span>Schedule (optional)</span>
+            <input id="scheduleAt" type="datetime-local" />
+          </label>
+        </div>
+        <div class="test-row">
+          <input id="testEmail" type="email" placeholder="your@email.com" />
+          <button class="ghost-btn" id="sendTestBtn">Send test to me</button>
+        </div>
+        <div class="progress-wrap">
+          <div class="progress-bar"><div class="progress-fill" id="progressFill"></div></div>
+          <div class="progress-meta" id="progressMeta">ready</div>
+        </div>
+        <div class="send-actions">
+          <button class="primary-btn" id="sendBtn"><span class="run-ico">▶</span> Run Campaign</button>
+          <button class="danger-btn hidden" id="stopBtn">Stop</button>
+          <span id="scheduleNote" class="muted"></span>
+        </div>
+        <div class="log" id="log"></div>
+      </div>
+    </section>
+
+    <footer class="footer">
+      Palak Diam Inc. · Booth 315 · RJO Buying Show · Lexington, KY · July 31 – August 3
+    </footer>
+  </div>
+
+  <div class="toast" id="toast"></div>
+  <script src="app.js"></script>
+</body>
+</html>
