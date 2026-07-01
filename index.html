@@ -20,7 +20,7 @@
     <div class="tb-center">
       <span class="tb-chip" id="nodeCount">5 nodes</span>
       <span class="tb-chip">2 edges</span>
-      <span class="tb-chip live"><span class="led" id="toolbarLed"></span> <span id="toolbarConn">emailjs: idle</span></span>
+      <span class="tb-chip live"><span class="led" id="toolbarLed"></span> <span id="toolbarConn">brevo: idle</span></span>
     </div>
     <div class="tb-right">
       <span class="tb-zoom">100%</span>
@@ -43,41 +43,40 @@
       <div class="node-head">
         <span class="node-ico">⬡</span>
         <div class="node-title">
-          <div class="node-kind">credentials · emailjs</div>
+          <div class="node-kind">credentials · brevo</div>
           <h2>Connection</h2>
         </div>
         <span class="status-pill" id="connStatus">idle</span>
       </div>
       <div class="node-body">
         <label class="field highlight">
-          <span>Service ID <em>· required</em></span>
-          <input id="serviceId" type="text" placeholder="service_xxxxxxx" autocomplete="off" spellcheck="false" />
-          <small>EmailJS → Email Services → your connected service.</small>
-        </label>
-        <details class="more">
-          <summary>Keys · prefilled</summary>
-          <div class="grid-2">
-            <label class="field">
-              <span>Template ID</span>
-              <input id="templateId" type="text" placeholder="template_xxxxxxx" autocomplete="off" spellcheck="false" />
-            </label>
-            <label class="field">
-              <span>Public Key</span>
-              <input id="publicKey" type="text" autocomplete="off" spellcheck="false" />
-            </label>
-            <label class="field">
-              <span>Private Key <em>· optional</em></span>
-              <div class="reveal">
-                <input id="privateKey" type="password" autocomplete="off" spellcheck="false" />
-                <button type="button" class="ghost-btn small" data-reveal="privateKey">show</button>
-              </div>
-            </label>
+          <span>Brevo API key <em>· required</em></span>
+          <div class="reveal">
+            <input id="brevoKey" type="password" placeholder="xkeysib-…" autocomplete="off" spellcheck="false" />
+            <button type="button" class="ghost-btn small" data-reveal="brevoKey">show</button>
           </div>
-        </details>
+          <small>Brevo → SMTP &amp; API → API Keys → create a key.</small>
+        </label>
+        <div class="grid-2">
+          <label class="field">
+            <span>Sender name</span>
+            <input id="senderName" type="text" />
+          </label>
+          <label class="field">
+            <span>Sender email <em>· must be verified in Brevo</em></span>
+            <input id="senderEmail" type="email" />
+          </label>
+        </div>
         <details class="help">
-          <summary>⚠ Email not sending? (422 fix)</summary>
+          <summary>Setup (one-time) — how to actually send</summary>
           <div class="help-body">
-            <p>"Recipients address is empty" means your template has no <b>To Email</b>. In <code id="tplEcho">template_k8y7cnf</code> → <b>Settings</b> → <b>To Email</b>, set <code>{{email}}</code> and save. Also set <b>Content</b> → <code>{{{message}}}</code>.</p>
+            <ol>
+              <li>Make a free account at <b>brevo.com</b>.</li>
+              <li><b>Verify your sender</b>: Brevo → <em>Senders, Domains &amp; Dedicated IPs</em> → add &amp; verify <code>Sales@PalakDiam.com</code> (or authenticate the whole palakdiam.com domain). Brevo will not send from an unverified sender.</li>
+              <li><b>Create an API key</b>: Brevo → <em>SMTP &amp; API → API Keys</em> → paste it above.</li>
+              <li>Run <code>node server.js</code> in this folder and open <code>http://localhost:8766</code>. Sends go through the local server to Brevo — <b>delivery &amp; opens show on your Brevo dashboard</b> (Transactional → Logs / Statistics).</li>
+            </ol>
+            <p class="muted">Brevo free tier sends up to 300 emails/day.</p>
           </div>
         </details>
       </div>
@@ -114,19 +113,21 @@
             <span>Logo image URL <em>· optional — blank uses the clean text logo</em></span>
             <input id="logoUrl" type="url" placeholder="https://www.palakdiam.com/logo.png" />
           </label>
-          <div class="grid-2">
-            <label class="field">
-              <span>Reply-to email</span>
-              <input id="replyTo" type="email" />
-            </label>
-            <label class="field">
-              <span>From name</span>
-              <input id="fromName" type="text" />
-            </label>
-          </div>
+          <label class="field">
+            <span>Flyer image URL <em>· blank uses the built-in flyer</em></span>
+            <input id="flyerUrl" type="url" placeholder="https://.../flyer.png" />
+          </label>
+          <label class="field">
+            <span>Reply-to email</span>
+            <input id="replyTo" type="email" />
+          </label>
           <label class="field">
             <span>Postal address <em>· footer (CAN-SPAM)</em></span>
             <input id="postalAddress" type="text" placeholder="Palak Diam Inc., 550 S Hill St, Los Angeles, CA 90013" />
+          </label>
+          <label class="field">
+            <span>Open-tracking pixel URL <em>· optional — needs a tracking service</em></span>
+            <input id="trackingPixel" type="url" placeholder="https://track.example.com/o" />
           </label>
         </details>
       </div>
@@ -159,6 +160,7 @@
           <button class="ghost-btn" id="parsePasteBtn">Parse rows</button>
         </div>
         <div class="table-wrap hidden" id="tableWrap">
+          <div class="table-tools"><button type="button" class="ghost-btn small" id="exportBtn">⭳ Export results (CSV)</button></div>
           <table id="recipientsTable">
             <thead>
               <tr><th>#</th><th>Company</th><th>Owner</th><th>Email</th><th>Status</th><th></th></tr>
@@ -202,10 +204,18 @@
       <div class="node-body">
         <p class="muted">Test on yourself first. Sends fire sequentially with a delay (EmailJS allows ~1/sec).</p>
         <div class="quota">
-          <span class="quota-count" id="quotaCount">0 / 400 sent today</span>
+          <span class="quota-count" id="quotaCount">0 / 500 sent today</span>
           <span class="quota-timer" id="quotaTimer"></span>
         </div>
         <div class="send-row">
+          <label class="field inline">
+            <span>Emails / day</span>
+            <select id="dailyCap">
+              <option value="500">500 / day</option>
+              <option value="1000">1000 / day</option>
+              <option value="1500">1500 / day</option>
+            </select>
+          </label>
           <label class="field inline">
             <span>Delay (sec)</span>
             <input id="delay" type="number" min="1" step="0.5" value="1.5" />

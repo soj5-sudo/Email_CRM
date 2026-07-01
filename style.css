@@ -356,8 +356,8 @@ input:focus, textarea:focus, select:focus {
 }
 .help summary::-webkit-details-marker { display: none; }
 .help-body { padding: 2px 0 14px; font-size: 13px; color: var(--ink-soft); line-height: 1.65; }
-.help-body ul { margin: 8px 0; padding-left: 18px; }
-.help-body li { margin: 5px 0; }
+.help-body ul, .help-body ol { margin: 8px 0; padding-left: 18px; }
+.help-body li { margin: 6px 0; }
 
 /* collapsible "optional" folds */
 .more { margin-top: 4px; border-top: 1px dashed var(--line); }
@@ -425,6 +425,10 @@ td .cell-input:focus { background: #0e1622; border-color: var(--cyan); }
 .badge.invalid { background: rgba(244,183,64,0.16); color: var(--warn); }
 .counts { align-self: center; font-family: var(--mono); font-size: 11.5px; color: var(--ink-soft); white-space: nowrap; }
 .counts b { color: var(--cyan); }
+.counts .c-sent { color: var(--good); }
+.counts .c-fail { color: var(--bad); }
+.badge-time { font-family: var(--mono); font-size: 10px; color: var(--muted); margin-left: 4px; }
+.table-tools { padding: 8px 10px; text-align: right; border-bottom: 1px solid var(--line); background: rgba(120,170,230,0.04); }
 
 /* ===================== preview ===================== */
 .picker { width: auto; min-width: 190px; align-self: center; padding: 8px 11px; font-size: 12px; }

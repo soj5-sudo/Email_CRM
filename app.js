@@ -7,35 +7,35 @@
 
 /* ---------- defaults (your EmailJS account) ---------- */
 const DEFAULTS = {
-  serviceId: '',                       // <-- paste your service_xxx in the UI
-  templateId: 'template_k8y7cnf',
-  publicKey: 'K6RBeDdBy6uGRlIM4',
-  privateKey: 'YpoX13Cbxg2IWXCiAtPr',
+  brevoKey: '',                        // <-- paste your Brevo API key (xkeysib-...) in the UI
+  senderName: 'Ankur Savani',
+  senderEmail: 'Sales@PalakDiam.com',  // must be a VERIFIED sender in Brevo
   subject: 'Meeting at RJO Booth 315?',
   preview: 'A quick note before the Lexington show — hope to see you there.',
-  logoUrl: 'https://d36hbw14aib5lz.cloudfront.net/310519663581052431/5Ki78xKZckhVPucWsF9STm/logo-stacked-cropped_2ba9bdc9.webp?Expires=1782853133&Signature=BVW35Pb6SUfBa6NywXdnjCETA8Kl7lABYRMr0MAT9dbspJ9kGSoWgteYp~ffIauWPF3HL3SxshxJP00A-cQa4aegqh1aiLela4jsoXyoP0aHcc-tk8bs0Rdp4atcC7dSAg6dwBN03jPRjbdbgwlgY6-NyV4Ko60Xp0McDl031GsILtBpm-yRN0mxserppS1uLX-zaOb2q2Yogl22jA04ZU1va2QgKaB1SxCTQWaeNl02gBfodo-gD-Zx3SiWWVqwH1yA~jmUfmVk683UvIIiA7Bil2o-v-AH0enaM7Ca7kkt7XCpYXQ1wDZ3uAa8vZaeGKOGdHLkpUJ7lXAqctfn5Q__&Key-Pair-Id=K1MP89RTKNH4J',
+  logoUrl: 'https://d36hbw14aib5lz.cloudfront.net/310519663581052431/5Ki78xKZckhVPucWsF9STm/logo-stacked-cropped_2ba9bdc9.webp?Expires=1782917932&Signature=r9brQphLG8YwzHagXVg11DUek24meX5zqwetZs4Uo7oP9Uo5Ko4FrVckWXTGdduvVl7DNW7cjh~HqZHUTfMVXRp6TRtn8nt9Hp4tw75qRdh3OMhiAZEnqZk8LKeTkBbkO~igeIpdb~auiwixvZ7j6sbngFw9I5RPrz8KFWmC1UwonuOM3EK2TGM640NaM693lz1gvyrYgC7M31jXsTX6ETZLICWx0M0H3oPF7DzW4rRaFHDcW5Oj0YN1m0doAiZ7iDkwzfMqvnq4iIq6dGnVaNV0YrzrfQ8j-T~0IHRsF0XsiLe6TJskPtiCkFniNYNjxx30U87EiVn9eBKqouxcAA__&Key-Pair-Id=K1MP89RTKNH4J',
+  flyerUrl: 'https://drive.google.com/thumbnail?id=1am_lBzMtk67_hbAolZKjCVNlmL51LU07&sz=w1000',
   bookingLink: '',
   replyTo: 'Sales@PalakDiam.com',
-  fromName: 'Ankur Savani · Palak Diam',
   postalAddress: '',
+  trackingPixel: '',
+  dailyCap: '500',
 };
 
-const LS_KEY = 'palakdiam_rjo_campaign_v5';
+const LS_KEY = 'palakdiam_rjo_campaign_v7';
 const QUOTA_KEY = 'palakdiam_quota';
-const DAILY_CAP = 400;            // max emails per calendar day
-const API_URL = 'https://api.emailjs.com/api/v1.0/email/send';
+function capToday() { return parseInt(getConfig().dailyCap, 10) || 500; } // user-selected daily send limit
+const SEND_URL = '/api/send';     // the local server proxies this to Brevo
 const MAX_TIMEOUT = 2147483647; // setTimeout 32-bit cap (~24.8 days)
 
 const $ = (id) => document.getElementById(id);
 
 const els = {
-  serviceId: $('serviceId'), templateId: $('templateId'),
-  publicKey: $('publicKey'), privateKey: $('privateKey'),
-  subject: $('subject'), preview: $('preview'), logoUrl: $('logoUrl'),
-  bookingLink: $('bookingLink'), replyTo: $('replyTo'), fromName: $('fromName'),
-  postalAddress: $('postalAddress'),
-  quotaCount: $('quotaCount'), quotaTimer: $('quotaTimer'),
-  connStatus: $('connStatus'), tplEcho: $('tplEcho'),
+  brevoKey: $('brevoKey'), senderName: $('senderName'), senderEmail: $('senderEmail'),
+  subject: $('subject'), preview: $('preview'), logoUrl: $('logoUrl'), flyerUrl: $('flyerUrl'),
+  bookingLink: $('bookingLink'), replyTo: $('replyTo'),
+  postalAddress: $('postalAddress'), trackingPixel: $('trackingPixel'),
+  quotaCount: $('quotaCount'), quotaTimer: $('quotaTimer'), exportBtn: $('exportBtn'), dailyCap: $('dailyCap'),
+  connStatus: $('connStatus'),
   toolbarLed: $('toolbarLed'), toolbarConn: $('toolbarConn'),
   canvas: $('canvas'), cables: $('cables'),
   dropzone: $('dropzone'), fileInput: $('fileInput'), browseBtn: $('browseBtn'),
@@ -51,11 +51,11 @@ const els = {
 };
 
 const CONFIG_FIELDS = [
-  'serviceId', 'templateId', 'publicKey', 'privateKey',
-  'subject', 'preview', 'logoUrl', 'bookingLink', 'replyTo', 'fromName', 'postalAddress',
+  'brevoKey', 'senderName', 'senderEmail',
+  'subject', 'preview', 'logoUrl', 'flyerUrl', 'bookingLink', 'replyTo', 'postalAddress', 'trackingPixel', 'dailyCap',
 ];
 // fields that change the rendered email body (trigger a re-render)
-const PREVIEW_FIELDS = ['preview', 'logoUrl', 'bookingLink', 'postalAddress'];
+const PREVIEW_FIELDS = ['preview', 'logoUrl', 'flyerUrl', 'bookingLink', 'postalAddress', 'trackingPixel'];
 
 let recipients = [];   // { company, owner, email, status, error }
 let sending = false;
@@ -71,14 +71,12 @@ function loadConfig() {
   CONFIG_FIELDS.forEach((k) => {
     els[k].value = (saved[k] !== undefined) ? saved[k] : DEFAULTS[k];
   });
-  els.tplEcho.textContent = els.templateId.value || DEFAULTS.templateId;
 }
 function saveConfig() {
   const data = {};
   CONFIG_FIELDS.forEach((k) => { data[k] = els[k].value.trim(); });
   try { localStorage.setItem(LS_KEY, JSON.stringify(data)); } catch (_) {}
   refreshConnStatus();
-  els.tplEcho.textContent = els.templateId.value || DEFAULTS.templateId;
 }
 function getConfig() {
   const c = {};
@@ -87,11 +85,11 @@ function getConfig() {
 }
 function refreshConnStatus() {
   const c = getConfig();
-  const ready = c.serviceId && c.templateId && c.publicKey;
-  els.connStatus.textContent = ready ? 'ready' : (c.serviceId ? 'incomplete' : 'add service id');
+  const ready = c.brevoKey && c.senderEmail;
+  els.connStatus.textContent = ready ? 'ready' : (c.brevoKey ? 'add sender' : 'add api key');
   els.connStatus.className = 'status-pill ' + (ready ? 'ok' : 'bad');
   els.toolbarLed.className = 'led ' + (ready ? 'ok' : 'bad');
-  els.toolbarConn.textContent = ready ? 'emailjs: ready' : 'emailjs: not set';
+  els.toolbarConn.textContent = ready ? 'brevo: ready' : 'brevo: not set';
 }
 
 /* ============================================================
@@ -206,14 +204,37 @@ function statusBadge(r) {
   };
   const [cls, label] = map[r.status] || ['', r.status];
   const title = r.error ? ` title="${escAttr(r.error)}"` : '';
-  return `<span class="badge ${cls}"${title}>${label}</span>`;
+  const time = r.at ? ` <span class="badge-time">${r.at}</span>` : '';
+  return `<span class="badge ${cls}"${title}>${label}</span>${time}`;
 }
 
 function updateCounts() {
   const total = recipients.length;
   const valid = recipients.filter((r) => validEmail(r.email)).length;
   const sent = recipients.filter((r) => r.status === 'sent').length;
-  els.counts.innerHTML = total ? `<b>${valid}</b> valid · ${sent} sent · ${total} rows` : '';
+  const failed = recipients.filter((r) => r.status === 'failed').length;
+  els.counts.innerHTML = total
+    ? `<b>${valid}</b> valid · <b class="c-sent">${sent}</b> sent · <b class="c-fail">${failed}</b> failed · ${total} rows`
+    : '';
+  if (els.exportBtn) els.exportBtn.style.display = total ? '' : 'none';
+}
+
+function exportResults() {
+  if (!recipients.length) { toast('No recipients to export.', 'bad'); return; }
+  const esc = (v) => `"${String(v == null ? '' : v).replace(/"/g, '""')}"`;
+  const rows = [['Company', 'Owner', 'Email', 'Status', 'Detail', 'Time']];
+  recipients.forEach((r) => {
+    const status = r.status === 'sent' ? 'delivered' : r.status;
+    rows.push([r.company, r.owner, r.email, status, r.error || '', r.at || '']);
+  });
+  const csv = rows.map((row) => row.map(esc).join(',')).join('\r\n');
+  const blob = new Blob(['﻿' + csv], { type: 'text/csv;charset=utf-8;' });
+  const a = document.createElement('a');
+  a.href = URL.createObjectURL(blob);
+  a.download = `palakdiam-results-${new Date().toISOString().slice(0, 10)}.csv`;
+  document.body.appendChild(a); a.click(); a.remove();
+  setTimeout(() => URL.revokeObjectURL(a.href), 1000);
+  toast('Results exported.', 'good');
 }
 
 els.recipientsBody.addEventListener('input', (e) => {
@@ -256,20 +277,21 @@ function buildEmailHtml(r) {
   const booking = (c.bookingLink || '').trim();
   const addr = (c.postalAddress || '').trim();
   const logo = (c.logoUrl || '').trim();
+  const companyName = (r.company || '').trim();
+  const flyerUrl = (c.flyerUrl || '').trim();
+  const closingLine = companyName
+    ? `Whether you are looking to buy, sell, or discuss both, we would be happy to see ${escHtml(companyName)} in Lexington.`
+    : `Whether you are looking to buy, sell, or discuss both, we would be happy to see you in Lexington.`;
+  const pixel = (c.trackingPixel || '').trim();
+  const pixelImg = pixel
+    ? `<img src="${escAttr(pixel + (pixel.includes('?') ? '&' : '?') + 'e=' + encodeURIComponent(r.email))}" width="1" height="1" alt="" style="display:block;width:1px;height:1px;border:0;overflow:hidden;">`
+    : '';
 
   const letterhead = logo
     ? `<img src="${escAttr(logo)}" alt="Palak Diam" width="220" style="width:220px;max-width:64%;height:auto;display:block;margin:0 auto;">`
     : `<div style="font-family:Georgia,'Times New Roman',serif;font-size:27px;letter-spacing:.2em;color:#1f2937;font-weight:bold;">PALAK&nbsp;DIAM</div>
        <table role="presentation" align="center" cellpadding="0" cellspacing="0" style="margin:8px auto 0;"><tr><td width="188" height="2" style="width:188px;height:2px;border-bottom:2px solid #1f2937;font-size:0;line-height:0;mso-line-height-rule:exactly;">&nbsp;</td></tr></table>
        <div style="font-family:Georgia,serif;font-style:italic;font-size:13px;color:#6b7280;margin-top:7px;">The Passion for Perfection</div>`;
-
-  const bring = [
-    'Diamond pairs for studs',
-    'GIA-certified stones',
-    'Non-certified stones',
-    'Value-priced loose natural diamonds',
-    'Special RJO member pricing and terms available at the show',
-  ].map((t) => `<tr><td valign="top" style="width:16px;color:#9ca3af;font-size:15px;line-height:25px;padding:1px 8px 1px 0;">&bull;</td><td style="font-size:15px;line-height:25px;color:#333a44;padding:1px 0;">${t}</td></tr>`).join('');
 
   const bookingPara = booking
     ? 'If you are attending RJO, we would appreciate the opportunity to meet with you at Booth&nbsp;315. You can stop by during the show, or book a time in advance here:'
@@ -282,112 +304,75 @@ function buildEmailHtml(r) {
       </td></tr>
     </table>` : '';
 
-  // FLYER 1 · SELLING — recreated natively (renders in every client, no hosting)
-  const sellingFlyer = `
-    <table role="presentation" width="100%" cellpadding="0" cellspacing="0" style="margin:18px 0;background:#0a0a0a;border-radius:14px;">
-      <tr><td style="padding:24px 26px 22px;">
-        <div style="font-family:Georgia,serif;font-size:17px;letter-spacing:.04em;color:#ffffff;font-weight:bold;text-align:center;">PALAK&nbsp;DIAM INC.</div>
-        <div style="font-family:Georgia,serif;font-style:italic;font-size:10px;color:#c9a24b;text-align:center;margin-top:2px;letter-spacing:.04em;">the passion for perfection</div>
-        <table role="presentation" align="center" cellpadding="0" cellspacing="0" style="margin:12px auto;"><tr><td width="120" height="1" style="width:120px;border-bottom:1px solid #3a2f12;font-size:0;line-height:0;mso-line-height-rule:exactly;">&nbsp;</td></tr></table>
-        <div style="font-family:Arial,Helvetica,sans-serif;font-size:29px;line-height:1.05;font-weight:800;color:#ffffff;">NOW SELLING</div>
-        <div style="font-family:Arial,Helvetica,sans-serif;font-size:29px;line-height:1.08;font-weight:800;color:#d8b154;">LOOSE NATURAL DIAMONDS</div>
-        <div style="font-family:Arial,Helvetica,sans-serif;font-size:14px;font-weight:700;color:#ffffff;letter-spacing:.2em;margin-top:8px;">TO RJO MEMBERS</div>
-        <table role="presentation" cellpadding="0" cellspacing="0" style="margin:16px 0;"><tr><td width="54" height="2" style="width:54px;border-bottom:2px solid #d8b154;font-size:0;line-height:0;mso-line-height-rule:exactly;">&nbsp;</td></tr></table>
-        <div style="font-family:Arial,Helvetica,sans-serif;font-size:21px;line-height:1.2;font-weight:800;color:#ffffff;">VALUE PRICING. <span style="color:#e0352b;">REAL SAVINGS</span> PASSED TO YOU.</div>
-        <table role="presentation" cellpadding="0" cellspacing="0" width="100%" style="margin-top:16px;">
-          ${[
-            'DIAMOND PAIRS FOR STUDS',
-            'GIA-CERTIFIED STONES AVAILABLE',
-            'NON-CERTIFIED STONES AVAILABLE',
-            'SELECT GIA-CERTIFIED STONES UP TO <span style="color:#e0352b;font-weight:800;">70 BACK OF RAP</span>',
-          ].map((t) => `<tr><td valign="top" style="width:16px;color:#d8b154;font-size:12px;line-height:20px;padding:4px 9px 4px 0;">◆</td><td style="font-family:Arial,Helvetica,sans-serif;font-size:13px;font-weight:600;letter-spacing:.03em;color:#eaeaea;line-height:20px;padding:4px 0;">${t}</td></tr>`).join('')}
-        </table>
-        <table role="presentation" width="100%" cellpadding="0" cellspacing="0" style="margin-top:18px;border:1px solid #d8b154;border-radius:10px;">
-          <tr><td style="padding:14px 18px;">
-            <div style="font-family:Arial,Helvetica,sans-serif;font-size:11px;letter-spacing:.12em;color:#ffffff;font-weight:700;">VISIT PALAK DIAM AT</div>
-            <div style="font-family:Arial,Helvetica,sans-serif;font-size:30px;font-weight:800;color:#d8b154;line-height:1.15;">BOOTH 315</div>
-            <div style="font-family:Arial,Helvetica,sans-serif;font-size:14px;font-weight:700;color:#ffffff;letter-spacing:.05em;">RJO BUYING SHOW</div>
-            <div style="font-family:Arial,Helvetica,sans-serif;font-size:12px;color:#c9a24b;margin-top:4px;">Lexington, KY &nbsp;·&nbsp; July 31 – August 3</div>
-          </td></tr>
-        </table>
-        <table role="presentation" width="100%" cellpadding="0" cellspacing="0" style="margin:18px 0 8px;"><tr><td height="1" style="border-bottom:1px solid #3a2f12;font-size:0;line-height:0;mso-line-height-rule:exactly;">&nbsp;</td></tr></table>
-        <div style="font-family:Arial,Helvetica,sans-serif;font-size:11px;color:#d8b154;text-align:center;letter-spacing:.02em;">213.228.0077&nbsp;&nbsp;·&nbsp;&nbsp;Sales@PalakDiam.com&nbsp;&nbsp;·&nbsp;&nbsp;www.PalakDiam.com</div>
+  // FLYER (image 1) — native fallback, used only if no hosted flyer image is set
+  const flyerFallback = `
+    <table role="presentation" width="100%" cellpadding="0" cellspacing="0" style="margin:18px 0;background:#141414;border-radius:14px;">
+      <tr><td style="padding:26px 28px 6px;">
+        <div style="font-family:Georgia,'Times New Roman',serif;font-size:26px;letter-spacing:.16em;color:#ffffff;font-weight:bold;">PALAK&nbsp;DIAM</div>
+        <table role="presentation" cellpadding="0" cellspacing="0" style="margin:8px 0 0;"><tr><td width="150" height="1" style="width:150px;border-bottom:1px solid #b9923f;font-size:0;line-height:0;mso-line-height-rule:exactly;">&nbsp;</td></tr></table>
+      </td></tr>
+      <tr><td style="padding:14px 28px 2px;">
+        <div style="font-family:Georgia,serif;font-size:22px;line-height:1.3;color:#ffffff;">Turn Yesterday's <span style="color:#c9a24b;">Dead Inventory</span><br>Into Tomorrow's <span style="color:#c9a24b;">Best Sellers</span></div>
+      </td></tr>
+      <tr><td style="padding:16px 28px 4px;">
+        <div style="font-family:Arial,Helvetica,sans-serif;font-size:16px;font-weight:800;letter-spacing:.08em;color:#c9a24b;">BOOTH 315&nbsp;&nbsp;|&nbsp;&nbsp;RJO 2026</div>
+      </td></tr>
+      <tr><td style="padding:18px 28px 28px;">
+        <table role="presentation" width="100%" cellpadding="0" cellspacing="0"><tr>
+          <td width="47%" valign="top" style="padding-right:12px;">
+            <div style="font-family:Georgia,serif;font-size:26px;font-weight:bold;color:#c9a24b;letter-spacing:.02em;">WE BUY</div>
+            <table role="presentation" cellpadding="0" cellspacing="0" width="100%" style="margin-top:12px;">
+              ${['UNWANTED DIAMONDS', 'MIXED LOTS', 'CLOSEOUTS', 'CERTIFIED DIAMONDS'].map((t) => `<tr><td valign="top" style="width:14px;color:#c9a24b;font-size:11px;line-height:20px;padding:4px 8px 4px 0;">◆</td><td style="font-family:Arial,Helvetica,sans-serif;font-size:12.5px;font-weight:600;letter-spacing:.02em;color:#f0f0f0;line-height:20px;padding:4px 0;">${t}</td></tr>`).join('')}
+            </table>
+          </td>
+          <td width="6%" style="border-left:1px solid #3a3a3a;font-size:0;line-height:0;">&nbsp;</td>
+          <td width="47%" valign="top" style="padding-left:16px;">
+            <div style="font-family:Georgia,serif;font-size:22px;font-weight:bold;color:#c9a24b;line-height:1.15;">NOW SELLING<br><span style="font-size:15px;letter-spacing:.02em;">VALUE DIAMONDS</span></div>
+            <table role="presentation" cellpadding="0" cellspacing="0" width="100%" style="margin-top:12px;">
+              ${['LOOSE NATURAL DIAMONDS', 'MATCHED PAIRS', 'GIA CERTIFIED — UP TO <span style="color:#e6c479;">-70% OFF RAP</span>', 'LAYOUTS'].map((t) => `<tr><td valign="top" style="width:14px;color:#c9a24b;font-size:11px;line-height:20px;padding:4px 8px 4px 0;">◆</td><td style="font-family:Arial,Helvetica,sans-serif;font-size:12.5px;font-weight:600;letter-spacing:.02em;color:#f0f0f0;line-height:20px;padding:4px 0;">${t}</td></tr>`).join('')}
+            </table>
+          </td>
+        </tr></table>
       </td></tr>
     </table>`;
 
-  // FLYER 2 · BUYING — recreated natively
-  const buyingFlyer = `
-    <table role="presentation" width="100%" cellpadding="0" cellspacing="0" style="margin:18px 0;background:#0a0a0a;border-radius:14px;">
-      <tr><td style="padding:20px 0 0;text-align:center;">
-        <div style="font-family:Georgia,serif;font-size:18px;letter-spacing:.1em;color:#ffffff;font-weight:bold;">PALAK&nbsp;DIAM</div>
-        <div style="font-family:Georgia,serif;font-style:italic;font-size:10px;color:#bdbdbd;margin-top:2px;">the passion for perfection</div>
-      </td></tr>
-      <tr><td style="padding:14px 0 0;">
-        <table role="presentation" width="100%" cellpadding="0" cellspacing="0" style="background:#29abe2;">
-          <tr><td style="padding:14px 20px;text-align:center;">
-            <div style="font-family:Georgia,serif;font-size:30px;font-weight:800;color:#ffffff;">WE BUY DIAMONDS!</div>
-            <div style="font-family:Georgia,serif;font-style:italic;font-size:15px;color:#ffffff;margin-top:2px;">Same-Day Payment</div>
-          </td></tr>
-        </table>
-      </td></tr>
-      <tr><td style="padding:14px 16px 0;">
-        <table role="presentation" width="100%" cellpadding="0" cellspacing="0"><tr>
-          ${['ANY SIZE', 'ANY SHAPE', 'ANY QUALITY', 'ANY QUANTITY'].map((t) => `<td style="padding:0 3px;"><div style="background:#ffd400;color:#0a0a0a;font-family:Arial,Helvetica,sans-serif;font-size:10px;font-weight:800;text-align:center;padding:6px 0;border-radius:3px;letter-spacing:.02em;">${t}</div></td>`).join('')}
-        </tr></table>
-      </td></tr>
-      <tr><td style="padding:18px 20px 0;text-align:center;">
-        <div style="font-family:Georgia,serif;font-style:italic;font-size:16px;color:#ffffff;">Breakout diamonds from VVS to I3</div>
-        <div style="font-family:Georgia,serif;font-style:italic;font-weight:800;font-size:18px;color:#ffd400;margin-top:3px;">WE BUY IT ALL!</div>
-      </td></tr>
-      <tr><td style="padding:16px 20px 0;">
-        <table role="presentation" width="100%" cellpadding="0" cellspacing="0"><tr>
-          <td width="50%" valign="top" style="padding:0 14px 0 0;">
-            <div style="font-family:Arial,Helvetica,sans-serif;font-size:13px;font-weight:800;color:#29abe2;text-align:center;letter-spacing:.02em;">SECURED PAYMENT METHODS</div>
-            <div style="font-family:Arial,Helvetica,sans-serif;font-size:13px;color:#ffffff;text-align:center;line-height:1.9;margin-top:8px;">E-Check&nbsp;·&nbsp;Zelle&nbsp;·&nbsp;ACH<br>Wire&nbsp;·&nbsp;Business Check</div>
-          </td>
-          <td width="50%" valign="top" style="padding:0 0 0 14px;border-left:1px solid #242424;">
-            <div style="font-family:Arial,Helvetica,sans-serif;font-size:13px;font-weight:800;color:#29abe2;text-align:center;">24 HOUR TURNAROUND</div>
-            <div style="font-family:Georgia,serif;font-style:italic;font-weight:800;font-size:12px;color:#ffd400;text-align:center;margin-top:6px;">FREE INSURED SHIPPING</div>
-            <div style="font-family:Georgia,serif;font-size:13px;color:#ffffff;text-align:center;line-height:1.4;margin-top:5px;">Every deal backed by a clear, written offer.</div>
-          </td>
-        </tr></table>
-      </td></tr>
-      <tr><td style="padding:18px 20px 22px;">
-        <div style="background:#ffffff;border-radius:12px;padding:14px 18px;text-align:center;">
-          <div style="font-family:Georgia,serif;font-style:italic;font-size:17px;font-weight:800;color:#1a6fa0;">I WANT TO EARN YOUR BUSINESS!</div>
-          <div style="font-family:Arial,Helvetica,sans-serif;font-size:11px;color:#222222;margin-top:6px;">Direct/Text: 213-268-8485&nbsp;&nbsp;·&nbsp;&nbsp;Sales@palakdiam.com&nbsp;&nbsp;·&nbsp;&nbsp;www.palakdiam.com</div>
-        </div>
-      </td></tr>
-    </table>`;
+  const showFlyer = flyerUrl
+    ? `<div style="margin:18px 0 6px;text-align:center;"><a href="${escAttr(booking || 'https://www.PalakDiam.com')}" target="_blank" style="text-decoration:none;"><img src="${escAttr(flyerUrl)}" alt="Palak Diam — Booth 315 · RJO 2026 · We Buy &amp; Now Selling" width="544" style="width:100%;max-width:544px;height:auto;display:block;margin:0 auto;border-radius:14px;border:1px solid #e5e7eb;"></a></div>`
+    : flyerFallback;
 
   return `<!DOCTYPE html>
 <html lang="en"><head><meta charset="utf-8">
 <meta name="viewport" content="width=device-width,initial-scale=1.0">
 <meta name="x-apple-disable-message-reformatting">
-<title>Palak Diam · RJO Booth 315</title></head>
+<meta name="color-scheme" content="light">
+<meta name="supported-color-schemes" content="light">
+<title>Palak Diam · RJO Booth 315</title>
+<style>
+  :root { color-scheme: light; supported-color-schemes: light; }
+  /* hold the card white in dark-mode clients that force-invert (Outlook.com) */
+  [data-ogsc] .pd-card { background:#ffffff !important; }
+</style></head>
 <body style="margin:0;padding:0;background:#f3f4f6;-webkit-text-size-adjust:100%;">
 <div style="display:none;max-height:0;overflow:hidden;opacity:0;color:#f3f4f6;font-size:1px;line-height:1px;">${preview}&#847;&zwnj;&nbsp;&#847;&zwnj;&nbsp;&#847;&zwnj;&nbsp;&#847;&zwnj;&nbsp;&#847;&zwnj;&nbsp;&#847;&zwnj;&nbsp;&#847;&zwnj;&nbsp;&#847;&zwnj;&nbsp;</div>
 <table role="presentation" width="100%" cellpadding="0" cellspacing="0" style="background:#f3f4f6;padding:30px 12px;">
 <tr><td align="center">
-<table role="presentation" width="600" cellpadding="0" cellspacing="0" style="width:600px;max-width:100%;background:#ffffff;border:1px solid #e5e7eb;border-radius:6px;">
+<table role="presentation" class="pd-card" width="600" cellpadding="0" cellspacing="0" style="width:600px;max-width:100%;background:#ffffff;border:1px solid #d3dae6;border-radius:8px;overflow:hidden;">
 
-  <tr><td style="padding:36px 48px 16px;text-align:center;">
+  <tr><td bgcolor="#d8b154" style="height:5px;background-color:#d8b154;background:linear-gradient(90deg,#e6c982,#d8b154,#b9923f);font-size:0;line-height:0;">&nbsp;</td></tr>
+  <tr><td style="padding:34px 48px 16px;text-align:center;">
     ${letterhead}
   </td></tr>
-  <tr><td style="padding:0 48px;"><div style="border-top:1px solid #edeff2;font-size:0;line-height:0;">&nbsp;</div></td></tr>
+  <tr><td style="padding:0 48px;"><div style="border-top:1px solid #e6d3a3;font-size:0;line-height:0;">&nbsp;</div></td></tr>
 
   <tr><td style="padding:26px 48px 6px;font-family:Helvetica,Arial,sans-serif;">
     <p style="margin:0 0 18px;font-size:15px;line-height:1.75;color:#333a44;">Hi ${name},</p>
     <p style="margin:0 0 16px;font-size:15px;line-height:1.75;color:#333a44;">Palak Diam will be exhibiting at the upcoming RJO Buying Show in Lexington, Kentucky, from July 31st to August 3rd at Booth&nbsp;315.</p>
     <p style="margin:0 0 16px;font-size:15px;line-height:1.75;color:#333a44;">Many RJO members already know Palak Diam as a trusted diamond buyer. This year, we are pleased to share that we will also be selling loose natural diamonds to RJO members at the show.</p>
-    <p style="margin:0 0 6px;font-size:15px;line-height:1.75;color:#333a44;">We will be bringing:</p>
-    <table role="presentation" cellpadding="0" cellspacing="0" width="100%" style="margin:0 0 16px;">${bring}</table>
     <p style="margin:0 0 16px;font-size:15px;line-height:1.75;color:#333a44;">At the same time, Palak Diam remains an active buyer of diamonds, including closeouts, breakout goods, unwanted inventory, small stones, chipped and broken diamonds, single stones, and finished jewelry with diamonds.</p>
     <p style="margin:0 0 4px;font-size:15px;line-height:1.75;color:#333a44;">${bookingPara}</p>
     ${bookingButton}
-    ${sellingFlyer}
-    ${buyingFlyer}
-    <p style="margin:20px 0 22px;font-size:15px;line-height:1.75;color:#333a44;">Whether you are looking to buy, sell, or discuss both, we would be happy to see you in Lexington.</p>
+    ${showFlyer}
+    <p style="margin:20px 0 22px;font-size:15px;line-height:1.75;color:#333a44;">${closingLine}</p>
   </td></tr>
 
   <tr><td style="padding:0 48px 30px;font-family:Helvetica,Arial,sans-serif;">
@@ -403,15 +388,17 @@ function buildEmailHtml(r) {
     </p>
   </td></tr>
 
-  <tr><td style="padding:14px 48px 24px;border-top:1px solid #edeff2;">
+  <tr><td style="padding:14px 48px 22px;border-top:1px solid #d7dde8;">
     <p style="margin:0;font-family:Arial,Helvetica,sans-serif;font-size:11px;color:#9ca3af;line-height:1.6;">
       ${addr ? escHtml(addr) + '<br>' : ''}You are receiving this note as an RJO member. If you would prefer not to hear from us, <a href="mailto:Sales@PalakDiam.com?subject=Unsubscribe&amp;body=Please%20remove%20this%20address%20from%20your%20list." style="color:#9ca3af;text-decoration:underline;">click here to unsubscribe</a> or reply with &ldquo;unsubscribe&rdquo;.
     </p>
   </td></tr>
+  <tr><td bgcolor="#1f2a44" style="height:5px;background-color:#1f2a44;font-size:0;line-height:0;">&nbsp;</td></tr>
 
 </table>
 </td></tr>
 </table>
+${pixelImg}
 </body></html>`;
 }
 
@@ -452,48 +439,39 @@ function renderPreview() {
    ============================================================ */
 async function sendOne(r) {
   const c = getConfig();
-  const params = {
-    // recipient address sent under every common alias so the template's
-    // "To Email" binding resolves no matter how it's wired (fixes 422).
-    email: r.email, to_email: r.email, user_email: r.email, recipient: r.email, reply_to: c.replyTo,
-    to_name: greetingName(r), owner_name: r.owner || '', company: r.company || '', company_name: r.company || '',
+  const email = {
+    sender: { name: c.senderName || 'Palak Diam', email: c.senderEmail },
+    to: [{ email: r.email, name: greetingName(r) }],
+    replyTo: { email: c.replyTo || c.senderEmail, name: c.senderName || 'Palak Diam' },
     subject: fillTokens(c.subject, r),
-    preview: fillTokens(c.preview, r),
-    message: buildEmailHtml(r),       // template Content must be {{{message}}}
-    from_name: c.fromName,
+    htmlContent: buildEmailHtml(r),
+    tags: ['rjo-booth-315'],
   };
-  const payload = {
-    service_id: c.serviceId,
-    template_id: c.templateId,
-    user_id: c.publicKey,
-    template_params: params,
-  };
-  if (c.privateKey) payload.accessToken = c.privateKey;
 
-  const res = await fetch(API_URL, {
-    method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify(payload),
-  });
-  if (!res.ok) {
-    const text = (await res.text().catch(() => '')) || res.statusText;
-    if (res.status === 422 && /recipient|address/i.test(text)) {
-      throw new Error('EmailJS has no "To Email" (422). In your template → Settings → To Email, set {{email}} (or {{to_email}}) and Save.');
-    }
-    if (res.status === 403) {
-      const hint = location.protocol === 'file:'
-        ? 'EmailJS rejected the request (403). This page is open from disk — serve it over http:// (run "node server.js", then open http://localhost:8766).'
-        : 'EmailJS rejected the origin (403). In EmailJS → Account → Security, allow this origin (or enable the API for non-browser apps).';
-      throw new Error(`${hint}${text ? ' (' + text + ')' : ''}`);
-    }
-    if (res.status === 429) throw new Error('Rate limited by EmailJS (max ~1 email/sec) — increase the delay and retry.');
-    throw new Error(`HTTP ${res.status} — ${text}`);
+  let res;
+  try {
+    res = await fetch(SEND_URL, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ apiKey: c.brevoKey, email }),
+    });
+  } catch (e) {
+    throw new Error('Cannot reach the local server — open this page at http://localhost:8766 (run "node server.js").');
   }
-  return true;
+  const data = await res.json().catch(() => ({}));
+  if (res.status >= 200 && res.status < 300) return true;
+
+  const msg = (data && (data.message || data.error)) || res.statusText;
+  if (res.status === 401) throw new Error('Brevo rejected the API key (401) — check it in node 1.');
+  if (res.status === 400 && /sender/i.test(msg)) throw new Error(`Sender "${c.senderEmail}" is not verified in Brevo — verify it under Brevo → Senders.`);
+  if (res.status === 402 || /credit|limit|quota/i.test(msg)) throw new Error('Brevo daily limit reached (free tier = 300/day).');
+  throw new Error(`Brevo ${res.status}: ${msg}`);
 }
 
 function preflight() {
   const c = getConfig();
-  if (!c.serviceId) { toast('Add your EmailJS Service ID first (node 1).', 'bad'); els.serviceId.focus(); return false; }
-  if (!c.templateId || !c.publicKey) { toast('Template ID and Public Key are required.', 'bad'); return false; }
+  if (!c.brevoKey) { toast('Add your Brevo API key first (node 1).', 'bad'); els.brevoKey.focus(); return false; }
+  if (!c.senderEmail) { toast('Add a verified sender email (node 1).', 'bad'); els.senderEmail.focus(); return false; }
   return true;
 }
 
@@ -506,7 +484,7 @@ function getQuota() {
   return q;
 }
 function sentToday() { return getQuota().count; }
-function remainingToday() { return Math.max(0, DAILY_CAP - sentToday()); }
+function remainingToday() { return Math.max(0, capToday() - sentToday()); }
 function addSent(n) {
   const q = getQuota(); q.count += n;
   try { localStorage.setItem(QUOTA_KEY, JSON.stringify(q)); } catch (_) {}
@@ -514,9 +492,10 @@ function addSent(n) {
 }
 function updateQuotaUI() {
   const used = sentToday();
-  els.quotaCount.textContent = `${used} / ${DAILY_CAP} sent today`;
-  els.quotaCount.className = used >= DAILY_CAP ? 'quota-count full' : 'quota-count';
-  if (used < DAILY_CAP) { stopResetCountdown(); els.quotaTimer.textContent = ''; }
+  const cap = capToday();
+  els.quotaCount.textContent = `${used} / ${cap} sent today`;
+  els.quotaCount.className = used >= cap ? 'quota-count full' : 'quota-count';
+  if (used < cap) { stopResetCountdown(); els.quotaTimer.textContent = ''; }
 }
 let resetTimer = null;
 function startResetCountdown() {
@@ -551,13 +530,13 @@ async function sendCampaign(skipConfirm) {
 
   const remaining = remainingToday();
   if (remaining <= 0) {
-    toast(`Daily cap of ${DAILY_CAP} reached — resumes after midnight.`, 'bad');
+    toast(`Daily cap of ${capToday()} reached — resumes after midnight.`, 'bad');
     startResetCountdown();
     return;
   }
   const batch = targets.slice(0, remaining);
   const deferred = targets.length - batch.length;
-  if (!skipConfirm && !confirm(`Send to ${batch.length} recipient${batch.length > 1 ? 's' : ''} now?${deferred ? `\n(${deferred} more exceed today's ${DAILY_CAP} cap — run again after midnight to send them.)` : ''}`)) return;
+  if (!skipConfirm && !confirm(`Send to ${batch.length} recipient${batch.length > 1 ? 's' : ''} now?${deferred ? `\n(${deferred} more exceed today's ${capToday()} cap — run again after midnight to send them.)` : ''}`)) return;
 
   sending = true; stopRequested = false;
   els.sendBtn.disabled = true;
@@ -570,7 +549,7 @@ async function sendCampaign(skipConfirm) {
   for (const r of batch) {
     if (stopRequested) { logLine('info', 'Stopped by user.'); break; }
     if (remainingToday() <= 0) {
-      logLine('info', `Daily cap of ${DAILY_CAP} reached — stopping; run again after midnight to send the rest.`);
+      logLine('info', `Daily cap of ${capToday()} reached — stopping; run again after midnight to send the rest.`);
       startResetCountdown();
       break;
     }
@@ -622,6 +601,7 @@ async function sendTest() {
 
 function setStatus(r, status, error) {
   r.status = status; r.error = error || '';
+  if (status === 'sent' || status === 'failed') r.at = new Date().toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' });
   const i = recipients.indexOf(r);
   const tr = els.recipientsBody.children[i];
   if (tr) tr.children[4].innerHTML = statusBadge(r);
@@ -765,7 +745,7 @@ function init() {
   if (remainingToday() <= 0) startResetCountdown();
   if (location.protocol === 'file:') {
     els.log.classList.add('show');
-    logLine('err', 'Open from disk (file://) — EmailJS will 403. Run "node server.js" in this folder, then open http://localhost:8766.');
+    logLine('err', 'Open from disk (file://) — sending needs the local server. Run "node server.js" in this folder, then open http://localhost:8766.');
   }
   refreshPreviewPicker();
 
@@ -773,6 +753,7 @@ function init() {
     els[k].addEventListener('input', () => {
       saveConfig();
       if (PREVIEW_FIELDS.includes(k)) renderPreview();
+      if (k === 'dailyCap') updateQuotaUI();
     });
   });
 
@@ -819,6 +800,7 @@ function init() {
     if (sending) stopRequested = true;
   });
   els.sendTestBtn.addEventListener('click', sendTest);
+  els.exportBtn.addEventListener('click', exportResults);
 
   // cables: redraw on layout changes
   if (window.ResizeObserver) new ResizeObserver(scheduleCables).observe(els.canvas);
